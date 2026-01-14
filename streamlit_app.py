@@ -172,61 +172,6 @@ def parse_drop_cols(text: str):
 # ---------------------------
 tab_metrics, tab_predict = st.tabs(["📊 Metrics (Labeled)", "🔮 Predict (Test)"])
 
-with tab_metrics:
-    st.subheader("Validation Metrics")
-
-    # Decide data source for metrics
-    if uploaded_val is not None:
-        df_val = pd.read_csv(uploaded_val)
-        st.info("Using uploaded **labeled** CSV for metrics.")
-    else:
-        df_val = read_repo_train()
-        if df_val is not None:
-            st.info("Using repo **train_data.csv** for metrics.")
-        else:
-            st.warning("No labeled CSV provided and repo train_data.csv not found.")
-            st.stop()
-
-    drops = parse_drop_cols(drop_cols_in)
-    if target_col not in df_val.columns:
-        st.error(f"Target column '{target_col}' not found in the labeled dataset.")
-        st.stop()
-
-    # Prepare features & target
-    X_val = df_val.drop(columns=[c for c in drops if c in df_val.columns] + [target_col])
-    y_val = df_val[target_col].astype(int)
-
-    nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
-    preprocessor = build_preprocessor(X_val, nb_variant=nb_variant)
-    model = make_model(model_name)
-    clf = Pipeline([("preprocess", preprocessor), ("model", model)])
-
-    # Quick train on labeled data (demo)
-    clf.fit(X_val, y_val)
-
-    # Probabilities preferred
-    try:
-        y_proba = clf.predict_proba(X_val)[:, 1]
-    except Exception:
-        if hasattr(clf.named_steps["model"], "decision_function"):
-            scores = clf.named_steps["model"].decision_function(clf.named_steps["preprocess"].transform(X_val))
-            s_min, s_max = scores.min(), scores.max()
-            y_proba = (scores - s_min) / (s_max - s_min + 1e-9)
-        else:
-            y_proba = clf.predict(X_val)
-
-    # Metrics
-    metrics = compute_metrics(y_val, y_proba, threshold=threshold)
-
-    st.markdown("#### Metrics")
-    st.json({k: metrics[k] for k in ["Accuracy", "AUC", "Precision", "Recall", "F1", "MCC"]})
-
-    st.markdown("#### Confusion Matrix")
-    cm_df = pd.DataFrame(metrics["ConfusionMatrix"], index=["True 0","True 1"], columns=["Pred 0","Pred 1"])
-    st.dataframe(cm_df)
-
-    st.markdown("#### Classification Report")
-    st.text(metrics["ClassificationReport"])
 
 with tab_predict:
     st.subheader("Test Scoring (Unlabeled CSV)")
@@ -246,24 +191,27 @@ with tab_predict:
     drops = parse_drop_cols(drop_cols_in)
     X_test = df_test.drop(columns=[c for c in drops if c in df_test.columns])
 
-    # Prefer training on repo train_data.csv if available
+    # Load labeled training data (required for valid predictions)
     df_train_repo = read_repo_train()
-    nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
-    model = make_model(model_name)
+    if df_train_repo is None or target_col not in df_train_repo.columns:
+        st.error(
+            "No labeled training data found. "
+            "Please add 'train_data.csv' with the target column "
+            f"'{target_col}' to the repo, or upload a labeled CSV in the Metrics tab."
+        )
+        st.stop()
 
-    if df_train_repo is not None and target_col in df_train_repo.columns:
-        X_train = df_train_repo.drop(columns=[c for c in drops if c in df_train_repo.columns] + [target_col])
-        y_train = df_train_repo[target_col].astype(int)
-        preprocessor = build_preprocessor(X_train, nb_variant=nb_variant)
-        clf = Pipeline([("preprocess", preprocessor), ("model", model)])
-        clf.fit(X_train, y_train)
-    else:
-        # Demo fallback (not ideal): fit on X_test with fake labels
-        st.warning("Repo training file not found or missing target. Fitting a demo model on test data with fake labels (predictions are illustrative only).")
-        preprocessor = build_preprocessor(X_test, nb_variant=nb_variant)
-        clf = Pipeline([("preprocess", preprocessor), ("model", model)])
-        y_fake = np.zeros(len(X_test))
-        clf.fit(X_test, y_fake)
+    # Prepare train data
+    X_train = df_train_repo.drop(columns=[c for c in drops if c in df_train_repo.columns] + [target_col])
+    y_train = df_train_repo[target_col].astype(int)
+
+    nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
+    preprocessor = build_preprocessor(X_train, nb_variant=nb_variant)
+    model = make_model(model_name)
+    clf = Pipeline([("preprocess", preprocessor), ("model", model)])
+
+    # Fit on labeled training data
+    clf.fit(X_train, y_train)
 
     # Predict probabilities on test
     try:
@@ -274,6 +222,7 @@ with tab_predict:
             s_min, s_max = s.min(), s.max()
             test_proba = (s - s_min) / (s_max - s_min + 1e-9)
         else:
+            # If probabilities are not available, provide zeros as a fallback
             test_proba = np.zeros(len(X_test))
 
     test_pred = (test_proba >= threshold).astype(int)
