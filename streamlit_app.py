@@ -5,7 +5,7 @@
 # - Model selection (6 models)
 # - Metrics display (Accuracy, AUC, Precision, Recall, F1, MCC)
 # - Confusion matrix & classification report
-# - Test scoring on uploaded CSV (unlabeled)
+# - Test scoring on uploaded CSV (unlabeled) or repo test_data.csv
 # ----------------------------------------------------------
 
 import os
@@ -50,19 +50,18 @@ st.caption("Supports 6 classifiers, labeled metrics, and test-time predictions")
 # ---------------------------
 st.sidebar.header("Settings")
 
-model_name = st.sidebar.selectbox(
-    "Choose Model",
-    [
-        "Logistic Regression",
-        "Decision Tree",
-        "kNN",
-        "Naive Bayes (Gaussian)",
-        "Naive Bayes (Multinomial)",
-        "Random Forest (Ensemble)",
-        "XGBoost (Ensemble)" if XGB_AVAILABLE else "XGBoost (Ensemble) (Unavailable)"
-    ]
-)
+model_options = [
+    "Logistic Regression",
+    "Decision Tree",
+    "kNN",
+    "Naive Bayes (Gaussian)",
+    "Naive Bayes (Multinomial)",
+    "Random Forest (Ensemble)"
+]
+if XGB_AVAILABLE:
+    model_options.append("XGBoost (Ensemble)")
 
+model_name = st.sidebar.selectbox("Choose Model", model_options)
 threshold = st.sidebar.slider("Decision Threshold", 0.0, 1.0, 0.50, 0.01)
 target_col = st.sidebar.text_input("Target Column (labeled data)", "Depression")
 drop_cols_in = st.sidebar.text_input("Columns to drop (comma-separated)", "id,Name")
@@ -140,21 +139,23 @@ def make_model(name: str):
         return GaussianNB()
     elif name == "Naive Bayes (Multinomial)":
         return MultinomialNB()
-    elif name.startswith("XGBoost") and XGB_AVAILABLE:
+    elif name == "Random Forest (Ensemble)":
+        return RandomForestClassifier(n_estimators=300, random_state=42, class_weight="balanced_subsample")
+    elif name == "XGBoost (Ensemble)" and XGB_AVAILABLE:
         return XGBClassifier(
             n_estimators=300, learning_rate=0.05, max_depth=6,
             subsample=0.8, colsample_bytree=0.8, random_state=42,
             objective="binary:logistic", eval_metric="logloss"
         )
     else:
-        # Fallback if XGB unavailable
+        # Fallback if XGB not available but selected
+        st.warning("XGBoost is unavailable. Falling back to Random Forest.")
         return RandomForestClassifier(n_estimators=300, random_state=42, class_weight="balanced_subsample")
 
 def read_repo_train(train_path="train_data.csv"):
     if os.path.exists(train_path):
         return pd.read_csv(train_path)
     else:
-        st.warning(f"Repo training file '{train_path}' not found. Upload a labeled CSV for metrics.")
         return None
 
 def read_test_default(test_path="test_data.csv"):
@@ -162,6 +163,9 @@ def read_test_default(test_path="test_data.csv"):
         return pd.read_csv(test_path)
     else:
         return None
+
+def parse_drop_cols(text: str):
+    return [c.strip() for c in text.split(",") if c.strip()]
 
 # ---------------------------
 # Tabs: Metrics | Predict
@@ -180,13 +184,10 @@ with tab_metrics:
         if df_val is not None:
             st.info("Using repo **train_data.csv** for metrics.")
         else:
-            df_val = None
+            st.warning("No labeled CSV provided and repo train_data.csv not found.")
+            st.stop()
 
-    if df_val is None:
-        st.stop()
-
-    # Basic checks
-    drops = [c.strip() for c in drop_cols_in.split(",") if c.strip()]
+    drops = parse_drop_cols(drop_cols_in)
     if target_col not in df_val.columns:
         st.error(f"Target column '{target_col}' not found in the labeled dataset.")
         st.stop()
@@ -195,7 +196,6 @@ with tab_metrics:
     X_val = df_val.drop(columns=[c for c in drops if c in df_val.columns] + [target_col])
     y_val = df_val[target_col].astype(int)
 
-    # For notebook-like convenience, we train on the labeled dataset itself (demo metrics)
     nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
     preprocessor = build_preprocessor(X_val, nb_variant=nb_variant)
     model = make_model(model_name)
@@ -243,23 +243,25 @@ with tab_predict:
             st.info("Upload a test CSV (unlabeled) to get predictions.")
             st.stop()
 
-    drops = [c.strip() for c in drop_cols_in.split(",") if c.strip()]
+    drops = parse_drop_cols(drop_cols_in)
     X_test = df_test.drop(columns=[c for c in drops if c in df_test.columns])
 
-    # Train a model on repo train_data.csv (preferred), else fit a demo model on test with fake labels
+    # Prefer training on repo train_data.csv if available
     df_train_repo = read_repo_train()
     nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
-    preprocessor = build_preprocessor(X_test if df_train_repo is None else df_train_repo.drop(columns=[c for c in drops if c in df_train_repo.columns] + ([target_col] if target_col in df_train_repo.columns else []))), nb_variant=nb_variant)
     model = make_model(model_name)
-    clf = Pipeline([("preprocess", preprocessor), ("model", model)])
 
     if df_train_repo is not None and target_col in df_train_repo.columns:
         X_train = df_train_repo.drop(columns=[c for c in drops if c in df_train_repo.columns] + [target_col])
         y_train = df_train_repo[target_col].astype(int)
+        preprocessor = build_preprocessor(X_train, nb_variant=nb_variant)
+        clf = Pipeline([("preprocess", preprocessor), ("model", model)])
         clf.fit(X_train, y_train)
     else:
         # Demo fallback (not ideal): fit on X_test with fake labels
         st.warning("Repo training file not found or missing target. Fitting a demo model on test data with fake labels (predictions are illustrative only).")
+        preprocessor = build_preprocessor(X_test, nb_variant=nb_variant)
+        clf = Pipeline([("preprocess", preprocessor), ("model", model)])
         y_fake = np.zeros(len(X_test))
         clf.fit(X_test, y_fake)
 
