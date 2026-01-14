@@ -123,4 +123,3 @@ with st.tabs(["Validation (metrics)", "Test Scoring (predictions)"])[1]:
     st.markdown("### Predictions (first 30 rows)")
     st.dataframe(out.head(30))
     st.download_button("Download predictions CSV", data=out.to_csv(index=False), file_name="predictions.csv")
-``
