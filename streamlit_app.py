@@ -225,4 +225,3 @@ st.caption(
     "UI imports your functions from model/ml_core.py and does not re-implement core logic. "
     "A single 80/20 stratified split with random_state=42 is used consistently."
 )
-``
