@@ -109,7 +109,8 @@ def get_models(naive_variant="gaussian"):
         objective="binary:logistic", eval_metric="logloss"
     )
     return models
-
+    
+if __name__ == "__main__":
 # ---------------------------
 # Load & basic rubric checks
 # ---------------------------
