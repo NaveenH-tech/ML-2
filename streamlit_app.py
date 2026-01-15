@@ -1,244 +1,228 @@
 
-# streamlit_app.py
-# ----------------------------------------------------------
-# Streamlit app for ML Assignment-2 (Binary Classification)
-# - Model selection (6 models)
-# - Metrics display (Accuracy, AUC, Precision, Recall, F1, MCC)
-# - Confusion matrix & classification report
-# - Test scoring on uploaded CSV (unlabeled) or repo test_data.csv
-# ----------------------------------------------------------
-
-import os
+# app.py
 import warnings
 warnings.filterwarnings("ignore")
 
-import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
+import streamlit as st
 
 from sklearn.model_selection import train_test_split
-from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB, MultinomialNB
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (
-    accuracy_score, roc_auc_score, precision_score, recall_score,
-    f1_score, matthews_corrcoef, confusion_matrix, classification_report
-)
 
-# Try to import xgboost (optional)
-try:
-    from xgboost import XGBClassifier
-    XGB_AVAILABLE = True
-except Exception:
-    XGB_AVAILABLE = False
+# ✅ Import your functions from model/ml_core.py
+from model.ml_core import build_preprocessor, get_models, compute_metrics
 
 # ---------------------------
-# Page config & header
-# ---------------------------
-st.set_page_config(page_title="ML Assignment 2 – Classification", layout="wide")
-st.title("ML Assignment 2 · Classification · Streamlit App")
-st.caption("Supports 6 classifiers, labeled metrics, and test-time predictions")
-
-# ---------------------------
-# Sidebar controls
-# ---------------------------
-st.sidebar.header("Settings")
-
-model_options = [
-    "Logistic Regression",
-    "Decision Tree",
-    "kNN",
-    "Naive Bayes (Gaussian)",
-    "Naive Bayes (Multinomial)",
-    "Random Forest (Ensemble)"
-]
-if XGB_AVAILABLE:
-    model_options.append("XGBoost (Ensemble)")
-
-model_name = st.sidebar.selectbox("Choose Model", model_options)
-threshold = st.sidebar.slider("Decision Threshold", 0.0, 1.0, 0.50, 0.01)
-target_col = st.sidebar.text_input("Target Column (labeled data)", "Depression")
-drop_cols_in = st.sidebar.text_input("Columns to drop (comma-separated)", "id,Name")
-
-st.sidebar.markdown("---")
-st.sidebar.write("**Upload data**")
-uploaded_val = st.sidebar.file_uploader("Upload Labeled CSV (optional; for metrics)", type=["csv"])
-uploaded_test = st.sidebar.file_uploader("Upload Test CSV (unlabeled; for predictions)", type=["csv"])
-
-# ---------------------------
-# Utility functions
+# App constants
 # ---------------------------
 CLASSIFICATION_METRICS = ["Accuracy", "AUC", "Precision", "Recall", "F1", "MCC"]
+DEFAULT_TARGET = "Depression"
+DEFAULT_DROP_COLS = "id,Name"
+TEST_SIZE = 0.2
+RANDOM_STATE = 42
 
-def build_preprocessor(X: pd.DataFrame, nb_variant: str = "") -> ColumnTransformer:
-    """
-    Preprocessing:
-      - For MultinomialNB: numeric (median + MinMaxScaler) → non-negative
-      - For others: numeric (median + StandardScaler)
-      - Categorical: most_frequent + OneHotEncoder dense (to support GaussianNB)
-    """
-    num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
-    cat_cols = X.select_dtypes(exclude=[np.number]).columns.tolist()
-
-    if nb_variant == "multinomial":
-        num_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", MinMaxScaler())
-        ])
-    else:
-        num_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler())
-        ])
-
-    # Use dense one-hot for NB compatibility
+# ---------------------------
+# UI helpers (no ML logic re-implemented)
+# ---------------------------
+def get_proba(clf: Pipeline, X_val: pd.DataFrame) -> np.ndarray:
+    """Prefer predict_proba; fallback to decision_function normalized; last resort labels."""
     try:
-        cat_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
-        ])
-    except TypeError:
-        # For older scikit-learn (<1.2)
-        cat_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse=False))
-        ])
+        return clf.predict_proba(X_val)[:, 1]
+    except Exception:
+        model = clf.named_steps.get("model", None)
+        pre = clf.named_steps.get("preprocess", None)
+        if model is not None and hasattr(model, "decision_function") and pre is not None:
+            scores = model.decision_function(pre.transform(X_val))
+            smin, smax = scores.min(), scores.max()
+            return (scores - smin) / (smax - smin + 1e-9)
+        return clf.predict(X_val).astype(float)
 
-    return ColumnTransformer([
-        ("num", num_pipe, num_cols),
-        ("cat", cat_pipe, cat_cols)
-    ])
+def build_ui_models() -> dict:
+    """
+    Use your get_models() to expose both NB variants and map to UI labels:
+    - Logistic Regression
+    - Decision Tree Classifier
+    - K-Nearest Neighbor Classifier
+    - Naive Bayes Classifier – Gaussian
+    - Naive Bayes Classifier – Multinomial
+    - Ensemble Model – Random Forest
+    - Ensemble Model – XGBoost
+    """
+    models_g = get_models(naive_variant="gaussian")
+    models_m = get_models(naive_variant="multinomial")
 
-def compute_metrics(y_true, y_proba, threshold=0.5):
-    y_pred = (y_proba >= threshold).astype(int)
-    return {
-        "Accuracy": float(accuracy_score(y_true, y_pred)),
-        "AUC": float(roc_auc_score(y_true, y_proba)),
-        "Precision": float(precision_score(y_true, y_pred, zero_division=0)),
-        "Recall": float(recall_score(y_true, y_pred)),
-        "F1": float(f1_score(y_true, y_pred)),
-        "MCC": float(matthews_corrcoef(y_true, y_pred)),
-        "ConfusionMatrix": confusion_matrix(y_true, y_pred).tolist(),
-        "ClassificationReport": classification_report(y_true, y_pred)
+    rename = {
+        "Logistic Regression": "Logistic Regression",
+        "Decision Tree": "Decision Tree Classifier",
+        "kNN": "K-Nearest Neighbor Classifier",
+        "Random Forest (Ensemble)": "Ensemble Model – Random Forest",
+        "XGBoost (Ensemble)": "Ensemble Model – XGBoost",
     }
 
-def make_model(name: str):
-    if name == "Logistic Regression":
-        return LogisticRegression(max_iter=1000, solver="liblinear", class_weight="balanced")
-    elif name == "Decision Tree":
-        return DecisionTreeClassifier(max_depth=None, random_state=42)
-    elif name == "kNN":
-        return KNeighborsClassifier(n_neighbors=5)
-    elif name == "Naive Bayes (Gaussian)":
-        return GaussianNB()
-    elif name == "Naive Bayes (Multinomial)":
-        return MultinomialNB()
-    elif name == "Random Forest (Ensemble)":
-        return RandomForestClassifier(n_estimators=300, random_state=42, class_weight="balanced_subsample")
-    elif name == "XGBoost (Ensemble)" and XGB_AVAILABLE:
-        return XGBClassifier(
-            n_estimators=300, learning_rate=0.05, max_depth=6,
-            subsample=0.8, colsample_bytree=0.8, random_state=42,
-            objective="binary:logistic", eval_metric="logloss"
-        )
-    else:
-        # Fallback if XGB not available but selected
-        st.warning("XGBoost is unavailable. Falling back to Random Forest.")
-        return RandomForestClassifier(n_estimators=300, random_state=42, class_weight="balanced_subsample")
+    ui_map: dict = {}
+    # Add non-NB models from the gaussian dict
+    for k, v in models_g.items():
+        if k == "Naive Bayes":
+            continue
+        ui_map[rename.get(k, k)] = v
 
-def read_repo_train(train_path="train_data.csv"):
-    if os.path.exists(train_path):
-        return pd.read_csv(train_path)
-    else:
-        return None
+    # Add NB variants explicitly
+    if "Naive Bayes" in models_g:
+        ui_map["Naive Bayes Classifier – Gaussian"] = models_g["Naive Bayes"]
+    if "Naive Bayes" in models_m:
+        ui_map["Naive Bayes Classifier – Multinomial"] = models_m["Naive Bayes"]
 
-def read_test_default(test_path="test_data.csv"):
-    if os.path.exists(test_path):
-        return pd.read_csv(test_path)
-    else:
-        return None
+    return ui_map
 
-def parse_drop_cols(text: str):
-    return [c.strip() for c in text.split(",") if c.strip()]
+def fit_and_eval_single(X, y, model_name: str, model_obj, threshold: float):
+    """Fit/evaluate selected model on fixed 80/20 split using your functions."""
+    X_tr, X_val, y_tr, y_val = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+    )
+    pre = build_preprocessor(X_tr, for_model=model_name)  # your function
+    clf = Pipeline([("preprocess", pre), ("model", model_obj)])
+    clf.fit(X_tr, y_tr)
+    proba = get_proba(clf, X_val)
+    metrics = compute_metrics(y_val, proba, threshold=threshold)  # your function
+    return metrics
+
+def compare_all_models(X, y, threshold: float) -> pd.DataFrame:
+    """Evaluate all models (including both NB variants) on the SAME split & threshold."""
+    X_tr, X_val, y_tr, y_val = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+    )
+    rows = []
+    ui_models = build_ui_models()
+    for name, model in ui_models.items():
+        pre = build_preprocessor(X_tr, for_model=name)
+        clf = Pipeline([("preprocess", pre), ("model", model)])
+        clf.fit(X_tr, y_tr)
+        proba = get_proba(clf, X_val)
+        try:
+            m = compute_metrics(y_val, proba, threshold=threshold)
+        except Exception:
+            m = {k: np.nan for k in CLASSIFICATION_METRICS}
+        rows.append({"Model": name, **{k: m.get(k, np.nan) for k in CLASSIFICATION_METRICS}})
+    df = pd.DataFrame(rows)
+    if df["AUC"].notna().any():
+        df = df.sort_values(by=["AUC", "F1"], ascending=False, na_position="last")
+    else:
+        df = df.sort_values(by=["F1", "Accuracy"], ascending=False)
+    return df.reset_index(drop=True)
 
 # ---------------------------
-# Tabs: Metrics | Predict
+# Streamlit UI
 # ---------------------------
-tab_metrics, tab_predict = st.tabs(["📊 Metrics (Labeled)", "🔮 Predict (Test)"])
+st.set_page_config(page_title="Classification UI", page_icon="🤖", layout="wide")
+st.title("🤖 Classification UI (Using model/ml_core.py)")
 
+with st.sidebar:
+    st.header("1) Upload Training Data")
+    train_file = st.file_uploader("Training CSV (must include target)", type=["csv"])
 
-with tab_predict:
-    st.subheader("Test Scoring (Unlabeled CSV)")
+    st.header("2) Columns")
+    target_col = st.text_input("Target column (binary 0/1)", value=DEFAULT_TARGET)
+    drop_cols_input = st.text_input("Columns to drop (comma-separated)", value=DEFAULT_DROP_COLS)
+    drop_cols = [c.strip() for c in drop_cols_input.split(",") if c.strip()]
 
-    # Decide test source
-    if uploaded_test is not None:
-        df_test = pd.read_csv(uploaded_test)
-        st.info("Using uploaded **test** CSV for predictions.")
+    st.header("3) Model & Threshold")
+    ui_models = build_ui_models()
+    model_name = st.selectbox("Select model", list(ui_models.keys()))
+    threshold = st.slider("Decision threshold", 0.05, 0.95, 0.55, 0.05)
+
+    st.header("4) Detail View")
+    detail_view = st.radio("Show", ["Confusion Matrix", "Classification Report"])
+
+st.markdown("---")
+
+if train_file is None:
+    st.info("⬆️ Upload a training CSV to get started.")
+    st.stop()
+
+# Load training data
+try:
+    df = pd.read_csv(train_file)
+except Exception as e:
+    st.error(f"Failed to read the uploaded CSV: {e}")
+    st.stop()
+
+# Validate target
+if target_col not in df.columns:
+    st.error(f"Target column '{target_col}' not found in the uploaded CSV.")
+    st.stop()
+
+# Prepare X, y
+drops = [c for c in drop_cols if c in df.columns]
+X = df.drop(columns=drops + [target_col], errors="ignore")
+y_raw = df[target_col]
+
+# Coerce to binary int if possible
+try:
+    y = y_raw.astype(int)
+except Exception:
+    uniq = sorted(y_raw.dropna().unique())
+    if len(uniq) == 2:
+        mapping = {uniq[0]: 0, uniq[1]: 1}
+        y = y_raw.map(mapping).astype(int)
+        st.warning(f"Mapped target values {uniq} → {mapping}")
     else:
-        df_test = read_test_default()
-        if df_test is not None:
-            st.info("Using repo **test_data.csv** for predictions.")
-        else:
-            st.info("Upload a test CSV (unlabeled) to get predictions.")
-            st.stop()
-
-    drops = parse_drop_cols(drop_cols_in)
-    X_test = df_test.drop(columns=[c for c in drops if c in df_test.columns])
-
-    # Load labeled training data (required for valid predictions)
-    df_train_repo = read_repo_train()
-    if df_train_repo is None or target_col not in df_train_repo.columns:
-        st.error(
-            "No labeled training data found. "
-            "Please add 'train_data.csv' with the target column "
-            f"'{target_col}' to the repo, or upload a labeled CSV in the Metrics tab."
-        )
+        st.error(f"Target '{target_col}' must be binary. Found unique values: {sorted(y_raw.unique())}")
         st.stop()
 
-    # Prepare train data
-    X_train = df_train_repo.drop(columns=[c for c in drops if c in df_train_repo.columns] + [target_col])
-    y_train = df_train_repo[target_col].astype(int)
+# Dataset info
+col1, col2, col3 = st.columns(3)
+with col1: st.metric("Rows", X.shape[0])
+with col2: st.metric("Features", X.shape[1])
+with col3:
+    vc = pd.Series(y).value_counts(normalize=True).sort_index()
+    st.metric("Class balance (0/1)", f"{vc.get(0,0):.2f} / {vc.get(1,0):.2f}")
 
-    nb_variant = "multinomial" if model_name == "Naive Bayes (Multinomial)" else ""
-    preprocessor = build_preprocessor(X_train, nb_variant=nb_variant)
-    model = make_model(model_name)
-    clf = Pipeline([("preprocess", preprocessor), ("model", model)])
+# Tabs: Single Model | Compare Models
+tab_single, tab_compare = st.tabs(["🔹 Single Model", "🔸 Compare Models"])
 
-    # Fit on labeled training data
-    clf.fit(X_train, y_train)
+with tab_single:
+    st.subheader("Selected Model")
+    st.write(f"**Model:** {model_name}  |  **Threshold:** {threshold:.2f}  |  Split: 80/20 (random_state=42)")
+    model_obj = ui_models[model_name]
 
-    # Predict probabilities on test
-    try:
-        test_proba = clf.predict_proba(X_test)[:, 1]
-    except Exception:
-        if hasattr(clf.named_steps["model"], "decision_function"):
-            s = clf.named_steps["model"].decision_function(clf.named_steps["preprocess"].transform(X_test))
-            s_min, s_max = s.min(), s.max()
-            test_proba = (s - s_min) / (s_max - s_min + 1e-9)
-        else:
-            # If probabilities are not available, provide zeros as a fallback
-            test_proba = np.zeros(len(X_test))
+    with st.spinner("Training & evaluating..."):
+        try:
+            metrics = fit_and_eval_single(X, y, model_name, model_obj, threshold)
+        except Exception as e:
+            st.error(f"Training failed: {e}")
+            st.stop()
 
-    test_pred = (test_proba >= threshold).astype(int)
+    # Metrics table
+    st.markdown("### 📊 Validation Metrics")
+    metrics_tbl = pd.DataFrame([{k: metrics.get(k, np.nan) for k in CLASSIFICATION_METRICS}]).T
+    metrics_tbl.columns = ["Value"]
+    st.dataframe(metrics_tbl.style.format("{:.4f}"), use_container_width=True)
 
-    id_col = "id" if "id" in df_test.columns else None
-    out = pd.DataFrame({
-        id_col if id_col else "row_id": df_test[id_col] if id_col else np.arange(len(df_test)),
-        "Depression_Prob": test_proba,
-        "Depression_Pred": test_pred
-    })
-    st.markdown("#### Predictions (first 30 rows)")
-    st.dataframe(out.head(30))
+    # Detailed view
+    st.markdown("### 🔎 Detailed View")
+    if detail_view == "Confusion Matrix":
+        cm = np.array(metrics["ConfusionMatrix"])
+        cm_df = pd.DataFrame(cm, index=["True 0", "True 1"], columns=["Pred 0", "Pred 1"])
+        st.dataframe(cm_df.style.format("{:.0f}"), use_container_width=True)
+    else:
+        st.text(metrics["ClassificationReport"])
 
-    st.download_button(
-        "Download predictions CSV",
-        data=out.to_csv(index=False),
-        file_name="predictions.csv",
-        mime="text/csv"
-    )
+with tab_compare:
+    st.subheader("Compare All Models")
+    st.write(f"**Threshold:** {threshold:.2f}  |  Same split used for all models (80/20, random_state=42)")
+    with st.spinner("Training & evaluating all models..."):
+        try:
+            comp_df = compare_all_models(X, y, threshold)
+        except Exception as e:
+            st.error(f"Comparison failed: {e}")
+            st.stop()
+    cols = ["Model"] + CLASSIFICATION_METRICS
+    st.dataframe(comp_df[cols].style.format({c: "{:.4f}" for c in CLASSIFICATION_METRICS}), use_container_width=True)
+
+st.markdown("---")
+st.caption(
+    "UI imports your functions from model/ml_core.py and does not re-implement core logic. "
+    "A single 80/20 stratified split with random_state=42 is used consistently."
+)
+``
