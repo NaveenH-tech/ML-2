@@ -3,7 +3,7 @@
 import warnings
 warnings.filterwarnings("ignore")
 
-mport sys
+import sys
 import os
 
 # Adds the current directory to the path so local modules are found
