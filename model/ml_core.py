@@ -117,101 +117,101 @@ def get_models(naive_variant="gaussian"):
     return models
     
 if __name__ == "__main__":
-# ---------------------------
-# Load & basic rubric checks
-# ---------------------------
-df = pd.read_csv(TRAIN_PATH)
-assert df.shape[0] >= 500, "Dataset must have >= 500 instances."
-assert TARGET in df.columns, f"Target column '{TARGET}' not found in training data."
-assert df.drop(columns=[TARGET]).shape[1] >= 12, "Dataset must have >= 12 features."
-
-# ---------------------------
-# Train/Validation split
-# ---------------------------
-drops = [c for c in DROP_COLS if c in df.columns]
-X = df.drop(columns=drops + [TARGET])
-y = df[TARGET].astype(int)
-
-X_tr, X_val, y_tr, y_val = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-models = get_models(naive_variant=NAIVE_TYPE)
-
-# ---------------------------
-# Fit, evaluate, collect metrics
-# ---------------------------
-results = {}
-for name, model in models.items():
-    preprocessor = build_preprocessor(X_tr, for_model=name)
-    clf = Pipeline([("preprocess", preprocessor), ("model", model)])
-    clf.fit(X_tr, y_tr)
-
-    # Prefer probabilities; fallback to decision_function or labels if needed
-    try:
-        y_val_proba = clf.predict_proba(X_val)[:, 1]
-    except Exception:
-        if hasattr(clf.named_steps["model"], "decision_function"):
-            df_score = clf.named_steps["model"].decision_function(clf.named_steps["preprocess"].transform(X_val))
-            df_min, df_max = df_score.min(), df_score.max()
-            y_val_proba = (df_score - df_min) / (df_max - df_min + 1e-9)
-        else:
-            y_val_proba = clf.predict(X_val)
-
-    m = compute_metrics(y_val, y_val_proba, threshold=THRESHOLD)
-    results[name] = {k: m[k] for k in CLASSIFICATION_METRICS}
-    results[name]["ConfusionMatrix"] = m["ConfusionMatrix"]
-    results[name]["ClassificationReport"] = m["ClassificationReport"]
-
-# ---------------------------
-# Save comparison table & reports
-# ---------------------------
-metrics_df = pd.DataFrame(results).T[CLASSIFICATION_METRICS].round(4)
-os.makedirs("model", exist_ok=True)
-metrics_df.to_csv("model/metrics_summary.csv", index=True)
-
-with open("model/detailed_reports.txt", "w") as f:
-    for name in results:
-        f.write(f"\n\n## {name}\n")
-        f.write(f"Confusion Matrix: {results[name]['ConfusionMatrix']}\n")
-        f.write(f"{results[name]['ClassificationReport']}\n")
-
-print("\n=== Validation Metrics Summary ===")
-print(metrics_df.to_string())
-
-# ---------------------------
-# Pick best model by AUC, refit on ALL training data, score TEST
-# ---------------------------
-best_name = max(results.keys(), key=lambda n: results[n]["AUC"])
-print(f"\nBest model by AUC: {best_name} (AUC={results[best_name]['AUC']:.4f})")
-
-best_model = models[best_name]
-best_preprocessor = build_preprocessor(X, for_model=best_name)
-best_clf = Pipeline([("preprocess", best_preprocessor), ("model", best_model)])
-best_clf.fit(X, y)  # refit on full training data
-
-# If test file exists, score and save predictions
-if os.path.exists(TEST_PATH):
-    df_test = pd.read_csv(TEST_PATH)
-    X_test = df_test.drop(columns=[c for c in DROP_COLS if c in df_test.columns])
-
-    try:
-        test_proba = best_clf.predict_proba(X_test)[:, 1]
-    except Exception:
-        if hasattr(best_clf.named_steps["model"], "decision_function"):
-            s = best_clf.named_steps["model"].decision_function(best_clf.named_steps["preprocess"].transform(X_test))
-            s_min, s_max = s.min(), s.max()
-            test_proba = (s - s_min) / (s_max - s_min + 1e-9)
-        else:
-            # fallback: zeros
-            test_proba = np.zeros(len(X_test))
-
-    test_pred = (test_proba >= THRESHOLD).astype(int)
-
-    id_col = "id" if "id" in df_test.columns else None
-    out = pd.DataFrame({
-        id_col if id_col else "row_id": df_test[id_col] if id_col else np.arange(len(df_test)),
-        "Depression_Prob": test_proba,
-        "Depression_Pred": test_pred
-    })
-else:
-    print(f"\nNo '{TEST_PATH}' found. Skipping test scoring.")
+    # ---------------------------
+    # Load & basic rubric checks
+    # ---------------------------
+    df = pd.read_csv(TRAIN_PATH)
+    assert df.shape[0] >= 500, "Dataset must have >= 500 instances."
+    assert TARGET in df.columns, f"Target column '{TARGET}' not found in training data."
+    assert df.drop(columns=[TARGET]).shape[1] >= 12, "Dataset must have >= 12 features."
+    
+    # ---------------------------
+    # Train/Validation split
+    # ---------------------------
+    drops = [c for c in DROP_COLS if c in df.columns]
+    X = df.drop(columns=drops + [TARGET])
+    y = df[TARGET].astype(int)
+    
+    X_tr, X_val, y_tr, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    models = get_models(naive_variant=NAIVE_TYPE)
+    
+    # ---------------------------
+    # Fit, evaluate, collect metrics
+    # ---------------------------
+    results = {}
+    for name, model in models.items():
+        preprocessor = build_preprocessor(X_tr, for_model=name)
+        clf = Pipeline([("preprocess", preprocessor), ("model", model)])
+        clf.fit(X_tr, y_tr)
+    
+        # Prefer probabilities; fallback to decision_function or labels if needed
+        try:
+            y_val_proba = clf.predict_proba(X_val)[:, 1]
+        except Exception:
+            if hasattr(clf.named_steps["model"], "decision_function"):
+                df_score = clf.named_steps["model"].decision_function(clf.named_steps["preprocess"].transform(X_val))
+                df_min, df_max = df_score.min(), df_score.max()
+                y_val_proba = (df_score - df_min) / (df_max - df_min + 1e-9)
+            else:
+                y_val_proba = clf.predict(X_val)
+    
+        m = compute_metrics(y_val, y_val_proba, threshold=THRESHOLD)
+        results[name] = {k: m[k] for k in CLASSIFICATION_METRICS}
+        results[name]["ConfusionMatrix"] = m["ConfusionMatrix"]
+        results[name]["ClassificationReport"] = m["ClassificationReport"]
+    
+    # ---------------------------
+    # Save comparison table & reports
+    # ---------------------------
+    metrics_df = pd.DataFrame(results).T[CLASSIFICATION_METRICS].round(4)
+    os.makedirs("model", exist_ok=True)
+    metrics_df.to_csv("model/metrics_summary.csv", index=True)
+    
+    with open("model/detailed_reports.txt", "w") as f:
+        for name in results:
+            f.write(f"\n\n## {name}\n")
+            f.write(f"Confusion Matrix: {results[name]['ConfusionMatrix']}\n")
+            f.write(f"{results[name]['ClassificationReport']}\n")
+    
+    print("\n=== Validation Metrics Summary ===")
+    print(metrics_df.to_string())
+    
+    # ---------------------------
+    # Pick best model by AUC, refit on ALL training data, score TEST
+    # ---------------------------
+    best_name = max(results.keys(), key=lambda n: results[n]["AUC"])
+    print(f"\nBest model by AUC: {best_name} (AUC={results[best_name]['AUC']:.4f})")
+    
+    best_model = models[best_name]
+    best_preprocessor = build_preprocessor(X, for_model=best_name)
+    best_clf = Pipeline([("preprocess", best_preprocessor), ("model", best_model)])
+    best_clf.fit(X, y)  # refit on full training data
+    
+    # If test file exists, score and save predictions
+    if os.path.exists(TEST_PATH):
+        df_test = pd.read_csv(TEST_PATH)
+        X_test = df_test.drop(columns=[c for c in DROP_COLS if c in df_test.columns])
+    
+        try:
+            test_proba = best_clf.predict_proba(X_test)[:, 1]
+        except Exception:
+            if hasattr(best_clf.named_steps["model"], "decision_function"):
+                s = best_clf.named_steps["model"].decision_function(best_clf.named_steps["preprocess"].transform(X_test))
+                s_min, s_max = s.min(), s.max()
+                test_proba = (s - s_min) / (s_max - s_min + 1e-9)
+            else:
+                # fallback: zeros
+                test_proba = np.zeros(len(X_test))
+    
+        test_pred = (test_proba >= THRESHOLD).astype(int)
+    
+        id_col = "id" if "id" in df_test.columns else None
+        out = pd.DataFrame({
+            id_col if id_col else "row_id": df_test[id_col] if id_col else np.arange(len(df_test)),
+            "Depression_Prob": test_proba,
+            "Depression_Pred": test_pred
+        })
+    else:
+        print(f"\nNo '{TEST_PATH}' found. Skipping test scoring.")
