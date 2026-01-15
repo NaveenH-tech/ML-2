@@ -6,6 +6,6 @@ pandas
 scipy
 scikit-learn
 xgboost
-model
+
 
 
