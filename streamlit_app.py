@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 # ✅ Import your functions from model/ml_core.py
-from model.ml_core import build_preprocessor, get_models, compute_metrics
+from ml_core import build_preprocessor, get_models, compute_metrics
 
 # ---------------------------
 # App constants
