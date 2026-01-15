@@ -3,6 +3,12 @@
 import warnings
 warnings.filterwarnings("ignore")
 
+mport sys
+import os
+
+# Adds the current directory to the path so local modules are found
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -11,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 # ✅ Import your functions from model/ml_core.py
-from ml_core import build_preprocessor, get_models, compute_metrics
+from model.ml_core import build_preprocessor, get_models, compute_metrics
 
 # ---------------------------
 # App constants
