@@ -125,20 +125,36 @@ st.set_page_config(page_title="Classification UI", page_icon="🤖", layout="wid
 st.title("🤖 Classification UI (Using model/ml_core.py)")
 
 with st.sidebar:
-    st.header("1) Upload Test Data")
+    # ---------------------------
+# Download Uploaded Dataset (for evaluator verification)
+# ---------------------------
+st.markdown("---")
+    st.subheader("⬇️ Download Test Dataset")
+    try:
+        csv_bytes = df.to_csv(index=False).encode("utf-8") 
+        st.download_button(
+            label="Download Test Dataset (CSV)",
+            data=csv_bytes,
+            file_name="test_data.csv",
+            mime="text/csv"
+        )
+    except Exception as e:
+        st.error(f"Failed to prepare dataset for download: {e}")
+   
+    st.header("Upload Test Data")
     train_file = st.file_uploader("Test CSV (must include target)", type=["csv"])
 
-    st.header("2) Columns")
+    st.header("Columns")
     target_col = st.text_input("Target column (binary 0/1)", value=DEFAULT_TARGET, disabled=True )
-    drop_cols_input = st.text_input("Columns to drop (comma-separated)", value=DEFAULT_DROP_COLS)
+    drop_cols_input = st.text_input("Columns to drop (comma-separated)", value=DEFAULT_DROP_COLS,disabled=True )
     drop_cols = [c.strip() for c in drop_cols_input.split(",") if c.strip()]
 
-    st.header("3) Model & Threshold")
+    st.header("Model & Threshold")
     ui_models = build_ui_models()
     model_name = st.selectbox("Select model", list(ui_models.keys()))
     threshold = st.slider("Decision threshold", 0.05, 0.95, 0.55, 0.05)
 
-    st.header("4) Detail View")
+    st.header("Detail View")
     detail_view = st.radio("Show", ["Confusion Matrix", "Classification Report"])
 
 st.markdown("---")
@@ -232,21 +248,3 @@ st.caption(
     "UI imports your functions from model/ml_core.py and does not re-implement core logic. "
     "A single 80/20 stratified split with random_state=42 is used consistently."
 )
-
-# ---------------------------
-# Download Uploaded Dataset (for evaluator verification)
-# ---------------------------
-st.markdown("---")
-st.subheader("⬇️ Download Uploaded Dataset")
-
-try:
-    csv_bytes = df.to_csv(index=False).encode("utf-8")
-
-    st.download_button(
-        label="Download Uploaded Dataset (CSV)",
-        data=csv_bytes,
-        file_name="uploaded_dataset.csv",
-        mime="text/csv"
-    )
-except Exception as e:
-    st.error(f"Failed to prepare dataset for download: {e}")
