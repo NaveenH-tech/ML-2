@@ -22,6 +22,16 @@ from sklearn.metrics import (
 MODEL_PATH = "model/trained_models/all_models.pkl"
 DEFAULT_TARGET = "Depression"
 
+if not os.path.exists(MODEL_PATH):
+    from train_models import train_and_save_all_models
+    import pandas as pd
+
+    df = pd.read_csv("data/train_data.csv")
+    X = df.drop(columns=["Depression"])
+    y = df["Depression"].astype(int)
+
+    train_and_save_all_models(X, y, MODEL_PATH)
+
 # -------------------------------------------------
 # LOAD MODELS (SAFE, CACHED)
 # -------------------------------------------------
