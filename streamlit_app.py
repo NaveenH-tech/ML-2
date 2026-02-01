@@ -233,22 +233,19 @@ st.caption(
 )
 
 # ---------------------------
-# Download Test Data (for evaluator verification)
+# Download Uploaded Dataset (for evaluator verification)
 # ---------------------------
 st.markdown("---")
-st.subheader("⬇️ Download Test Dataset")
+st.subheader("⬇️ Download Uploaded Dataset")
 
-if 'test_file' in locals() and test_file is not None:
-    try:
-        test_csv_bytes = test_df.to_csv(index=False).encode("utf-8")
+try:
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
 
-        st.download_button(
-            label="Download Test Dataset (CSV)",
-            data=test_csv_bytes,
-            file_name="test_data.csv",
-            mime="text/csv"
-        )
-    except Exception as e:
-        st.error(f"Failed to prepare test data for download: {e}")
-else:
-    st.info("Upload test data to enable download.")
+    st.download_button(
+        label="Download Uploaded Dataset (CSV)",
+        data=csv_bytes,
+        file_name="uploaded_dataset.csv",
+        mime="text/csv"
+    )
+except Exception as e:
+    st.error(f"Failed to prepare dataset for download: {e}")
