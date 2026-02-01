@@ -231,3 +231,24 @@ st.caption(
     "UI imports your functions from model/ml_core.py and does not re-implement core logic. "
     "A single 80/20 stratified split with random_state=42 is used consistently."
 )
+
+# ---------------------------
+# Download Test Data (for evaluator verification)
+# ---------------------------
+st.markdown("---")
+st.subheader("⬇️ Download Test Dataset")
+
+if 'test_file' in locals() and test_file is not None:
+    try:
+        test_csv_bytes = test_df.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            label="Download Test Dataset (CSV)",
+            data=test_csv_bytes,
+            file_name="test_data.csv",
+            mime="text/csv"
+        )
+    except Exception as e:
+        st.error(f"Failed to prepare test data for download: {e}")
+else:
+    st.info("Upload test data to enable download.")
