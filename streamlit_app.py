@@ -1,4 +1,5 @@
 
+
 # app.py
 import warnings
 warnings.filterwarnings("ignore")
@@ -19,18 +20,18 @@ from sklearn.pipeline import Pipeline
 # ✅ Import your functions from model/ml_core.py
 from model.ml_core import build_preprocessor, get_models, compute_metrics
 
-# ---------------------------
+# --------------
 # App constants
-# ---------------------------
+# --------------
 CLASSIFICATION_METRICS = ["Accuracy", "AUC", "Precision", "Recall", "F1", "MCC"]
 DEFAULT_TARGET = "Depression"
 DEFAULT_DROP_COLS = "id,Name"
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
-# ---------------------------
-# UI helpers (no ML logic re-implemented)
-# ---------------------------
+# -----------
+# UI helpers 
+# -----------
 def get_proba(clf: Pipeline, X_val: pd.DataFrame) -> np.ndarray:
     """Prefer predict_proba; fallback to decision_function normalized; last resort labels."""
     try:
@@ -124,11 +125,11 @@ st.set_page_config(page_title="Classification UI", page_icon="🤖", layout="wid
 st.title("🤖 Classification UI (Using model/ml_core.py)")
 
 with st.sidebar:
-    st.header("1) Upload Training Data")
-    train_file = st.file_uploader("Training CSV (must include target)", type=["csv"])
+    st.header("1) Upload Test Data")
+    train_file = st.file_uploader("Test CSV (must include target)", type=["csv"])
 
     st.header("2) Columns")
-    target_col = st.text_input("Target column (binary 0/1)", value=DEFAULT_TARGET)
+    target_col = st.text_input("Target column (binary 0/1)", value=DEFAULT_TARGET, disabled=True )
     drop_cols_input = st.text_input("Columns to drop (comma-separated)", value=DEFAULT_DROP_COLS)
     drop_cols = [c.strip() for c in drop_cols_input.split(",") if c.strip()]
 
