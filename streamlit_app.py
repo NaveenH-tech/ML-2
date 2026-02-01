@@ -124,11 +124,7 @@ def compare_all_models(X, y, threshold: float) -> pd.DataFrame:
 st.set_page_config(page_title="Classification UI", page_icon="🤖", layout="wide")
 st.title("🤖 Classification UI (Using model/ml_core.py)")
 
-with st.sidebar:
-    # ---------------------------
-# Download Uploaded Dataset (for evaluator verification)
-# ---------------------------
-st.markdown("---")
+with st.sidebar:   
     st.subheader("⬇️ Download Test Dataset")
     try:
         csv_bytes = df.to_csv(index=False).encode("utf-8") 
@@ -156,7 +152,6 @@ st.markdown("---")
 
     st.header("Detail View")
     detail_view = st.radio("Show", ["Confusion Matrix", "Classification Report"])
-
 st.markdown("---")
 
 if train_file is None:
