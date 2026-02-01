@@ -1,6 +1,4 @@
-import warnings
-warnings.filterwarnings("ignore")
-
+# streamlit_app.py
 import os
 import pickle
 import numpy as np
@@ -13,146 +11,122 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
-    matthews_corrcoef,
     confusion_matrix,
-    classification_report
+    classification_report,
+    matthews_corrcoef
 )
 
 # -------------------------------------------------
 # CONFIG
 # -------------------------------------------------
 MODEL_PATH = "model/trained_models/all_models.pkl"
-TARGET_COLUMN = "Depression"
-THRESHOLD = 0.5
-
-METRICS = ["Accuracy", "AUC", "Precision", "Recall", "F1", "MCC"]
+DEFAULT_TARGET = "Depression"
 
 # -------------------------------------------------
-# LOAD TRAINED MODELS
+# LOAD MODELS (SAFE, CACHED)
 # -------------------------------------------------
 @st.cache_resource
 def load_models():
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError("Trained model file not found")
+        st.error("Trained model file not found")
+        st.stop()
+
     with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
+        models = pickle.load(f)
+
+    return models
+
 
 models = load_models()
 
 # -------------------------------------------------
-# HELPER FUNCTIONS
-# -------------------------------------------------
-def get_proba(model, X):
-    try:
-        return model.predict_proba(X)[:, 1]
-    except Exception:
-        return model.predict(X).astype(float)
-
-def compute_metrics(y_true, y_proba, threshold=0.5):
-    y_pred = (y_proba >= threshold).astype(int)
-
-    results = {
-        "Accuracy": accuracy_score(y_true, y_pred),
-        "Precision": precision_score(y_true, y_pred, zero_division=0),
-        "Recall": recall_score(y_true, y_pred, zero_division=0),
-        "F1": f1_score(y_true, y_pred, zero_division=0),
-        "MCC": matthews_corrcoef(y_true, y_pred),
-        "ConfusionMatrix": confusion_matrix(y_true, y_pred),
-        "ClassificationReport": classification_report(y_true, y_pred)
-    }
-
-    try:
-        results["AUC"] = roc_auc_score(y_true, y_proba)
-    except Exception:
-        results["AUC"] = np.nan
-
-    return results
-
-# -------------------------------------------------
 # STREAMLIT UI
 # -------------------------------------------------
-st.set_page_config(
-    page_title="ML Assignment 2 - Classification",
-    layout="wide"
+st.set_page_config(page_title="ML Assignment 2", layout="wide")
+st.title("Classification App (Pretrained Models)")
+
+st.sidebar.header("1. Upload Test Dataset")
+test_file = st.sidebar.file_uploader(
+    "Upload CSV file (test data only)",
+    type=["csv"]
 )
 
-st.title("Classification App - ML Assignment 2")
+st.sidebar.header("2. Settings")
+target_col = st.sidebar.text_input("Target column", value=DEFAULT_TARGET)
+model_name = st.sidebar.selectbox("Select model", list(models.keys()))
+threshold = st.sidebar.slider("Decision threshold", 0.05, 0.95, 0.50, 0.05)
+view_type = st.sidebar.radio(
+    "Detailed View",
+    ["Confusion Matrix", "Classification Report"]
+)
 
-# ---------------- Sidebar ----------------
-with st.sidebar:
-    st.header("Upload Test Dataset")
-    test_file = st.file_uploader(
-        "Upload test CSV only",
-        type=["csv"]
-    )
-
-    st.header("Model Selection")
-    model_name = st.selectbox(
-        "Select Model",
-        list(models.keys())
-    )
-
-    st.header("Decision Threshold")
-    threshold = st.slider(
-        "Threshold",
-        min_value=0.05,
-        max_value=0.95,
-        value=0.50,
-        step=0.05
-    )
-
-    st.header("Detailed Output")
-    view_option = st.radio(
-        "View",
-        ["Confusion Matrix", "Classification Report"]
-    )
-
-# ---------------- Main ----------------
+# -------------------------------------------------
+# STOP IF NO DATA
+# -------------------------------------------------
 if test_file is None:
-    st.info("Upload test dataset to begin")
+    st.info("Please upload a test CSV file to continue")
     st.stop()
 
-# Load test data
-test_df = pd.read_csv(test_file)
+# -------------------------------------------------
+# LOAD TEST DATA
+# -------------------------------------------------
+df = pd.read_csv(test_file)
 
-if TARGET_COLUMN not in test_df.columns:
-    st.error(f"Target column '{TARGET_COLUMN}' not found in test data")
+if target_col not in df.columns:
+    st.error(f"Target column '{target_col}' not found in dataset")
     st.stop()
 
-X_test = test_df.drop(columns=[TARGET_COLUMN])
-y_test = test_df[TARGET_COLUMN].astype(int)
+X_test = df.drop(columns=[target_col])
+y_test = df[target_col].astype(int)
 
-# Dataset info
+st.markdown("### Dataset Information")
 c1, c2, c3 = st.columns(3)
-with c1:
-    st.metric("Samples", X_test.shape[0])
-with c2:
-    st.metric("Features", X_test.shape[1])
-with c3:
-    balance = y_test.value_counts(normalize=True).to_dict()
-    st.metric("Class Balance (0 / 1)", f"{balance.get(0,0):.2f} / {balance.get(1,0):.2f}")
+c1.metric("Rows", X_test.shape[0])
+c2.metric("Features", X_test.shape[1])
+c3.metric(
+    "Class Balance (0 / 1)",
+    f"{(y_test == 0).mean():.2f} / {(y_test == 1).mean():.2f}"
+)
 
-# Run model
+# -------------------------------------------------
+# PREDICTION
+# -------------------------------------------------
 model = models[model_name]
 
-with st.spinner("Evaluating model"):
-    proba = get_proba(model, X_test)
-    metrics = compute_metrics(y_test, proba, threshold)
+try:
+    y_prob = model.predict_proba(X_test)[:, 1]
+except Exception:
+    y_prob = model.predict(X_test).astype(float)
 
-# ---------------- Metrics ----------------
-st.subheader("Evaluation Metrics")
+y_pred = (y_prob >= threshold).astype(int)
 
-metric_df = pd.DataFrame(
-    [{"Metric": k, "Value": metrics[k]} for k in METRICS]
-)
+# -------------------------------------------------
+# METRICS
+# -------------------------------------------------
+metrics = {
+    "Accuracy": accuracy_score(y_test, y_pred),
+    "Precision": precision_score(y_test, y_pred),
+    "Recall": recall_score(y_test, y_pred),
+    "F1 Score": f1_score(y_test, y_pred),
+    "MCC": matthews_corrcoef(y_test, y_pred),
+}
 
-st.dataframe(metric_df.style.format({"Value": "{:.4f}"}), use_container_width=True)
+try:
+    metrics["AUC"] = roc_auc_score(y_test, y_prob)
+except Exception:
+    metrics["AUC"] = np.nan
 
-# ---------------- Detailed View ----------------
-st.subheader("Detailed Evaluation")
+st.markdown("### Evaluation Metrics")
+metrics_df = pd.DataFrame(metrics, index=["Value"]).T
+st.dataframe(metrics_df.style.format("{:.4f}"), use_container_width=True)
 
-if view_option == "Confusion Matrix":
-    cm = metrics["ConfusionMatrix"]
+# -------------------------------------------------
+# DETAILED VIEW
+# -------------------------------------------------
+st.markdown("### Detailed Evaluation")
+
+if view_type == "Confusion Matrix":
+    cm = confusion_matrix(y_test, y_pred)
     cm_df = pd.DataFrame(
         cm,
         index=["True 0", "True 1"],
@@ -160,20 +134,21 @@ if view_option == "Confusion Matrix":
     )
     st.dataframe(cm_df, use_container_width=True)
 else:
-    st.text(metrics["ClassificationReport"])
+    report = classification_report(y_test, y_pred)
+    st.text(report)
 
-# ---------------- Download Section ----------------
+# -------------------------------------------------
+# DOWNLOAD TEST DATA
+# -------------------------------------------------
 st.markdown("---")
 st.subheader("Download Test Dataset")
 
+csv_bytes = df.to_csv(index=False).encode("utf-8")
 st.download_button(
-    label="Download Uploaded Test Data",
-    data=test_df.to_csv(index=False),
+    label="Download Uploaded Test CSV",
+    data=csv_bytes,
     file_name="test_data.csv",
     mime="text/csv"
 )
 
-st.caption(
-    "Models are pre-trained offline and loaded from disk. "
-    "Only test data is uploaded as per assignment guidelines."
-)
+st.caption("Models are pretrained and loaded from disk. No retraining is performed in the UI.")
