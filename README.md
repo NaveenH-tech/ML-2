@@ -1,4 +1,4 @@
-# ML Assignment 2 – Binary Classification (Mental Health / Depression Prediction)
+# ML Assignment 2 – Mental Health / Depression Prediction
 
 ## (a) Problem Statement
 
