@@ -1,7 +1,7 @@
 id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pressure,Work Pressure,CGPA,Study Satisfaction,Job Satisfaction,Sleep Duration,Dietary Habits,Degree,Have you ever had suicidal thoughts ?,Work/Study Hours,Financial Stress,Family History of Mental Illness,Depression
 303,Aaradhya,Female,19.0,Meerut,Student,,2.0,,6.95,2.0,,Less than 5 hours,Healthy,Class 12,Yes,2.0,3.0,Yes,0
 59,Rohan,Male,28.0,Nagpur,Student,,3.0,,9.79,1.0,,7-8 hours,Moderate,B.Ed,Yes,12.0,3.0,No,1
-214,Aryan,Male,28.0,Kalyan,Student,,3.0,,9.86,3.0,,7-8 hours,Unhealthy,M.Pharm,Yes,11.0,2.0,No,1
+214,Aryan,Male,28.0,Kalyan,Student,,3.0,,9.86,3.0,,7-8 hours,Unhealthy,M.Pharm,Yes,11.0,2.0,No,0
 89,Ayaan,Male,45.0,Bangalore,Working Professional,Teacher,,1.0,,,5.0,7-8 hours,Moderate,B.Arch,No,2.0,4.0,Yes,0
 201,Harsh,Male,48.0,Indore,Working Professional,Sales Executive,,1.0,,,1.0,7-8 hours,Moderate,M.Com,Yes,12.0,5.0,Yes,0
 562,Rupa,Female,48.0,Delhi,Working Professional,Content Writer,,1.0,,,2.0,5-6 hours,Moderate,BCA,No,7.0,1.0,Yes,0
@@ -15,7 +15,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 1323,Tushar,Male,52.0,Visakhapatnam,Working Professional,Graphic Designer,,4.0,,,5.0,More than 8 hours,Moderate,MSc,Yes,10.0,5.0,No,0
 1169,Vivaan,Male,28.0,Srinagar,Working Professional,Graphic Designer,,5.0,,,3.0,Less than 5 hours,Moderate,B.Tech,Yes,2.0,5.0,Yes,1
 712,Yogesh,Male,20.0,Vadodara,Student,,3.0,,8.74,5.0,,Less than 5 hours,Unhealthy,Class 12,Yes,6.0,2.0,No,1
-1185,Sanjeev,Male,35.0,Ahmedabad,Working Professional,Lawyer,,4.0,,,2.0,5-6 hours,Unhealthy,LLB,Yes,9.0,4.0,Yes,1
+1185,Sanjeev,Male,35.0,Ahmedabad,Working Professional,Lawyer,,4.0,,,2.0,5-6 hours,Unhealthy,LLB,Yes,9.0,4.0,No,1
 731,Ira,Female,24.0,Lucknow,Working Professional,Teacher,,5.0,,,2.0,More than 8 hours,Moderate,B.Arch,Yes,6.0,1.0,Yes,1
 1629,Aarti,Female,21.0,Thane,Student,,5.0,,8.04,2.0,,Less than 5 hours,Healthy,B.Ed,Yes,3.0,2.0,No,1
 123259,Arjun,Male,23.0,Kanpur,Student,Teacher,3.0,,5.59,1.0,,More than 8 hours,Healthy,BCA,Yes,11.0,4.0,Yes,1
@@ -28,7 +28,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 1432,Gauri,Female,31.0,Visakhapatnam,Student,,5.0,,9.39,5.0,,Less than 5 hours,Moderate,Class 12,No,1.0,1.0,Yes,1
 1529,Ritik,Male,22.0,Jaipur,Student,,4.0,,9.33,4.0,,More than 8 hours,Moderate,BCA,Yes,9.0,2.0,No,0
 1377,Pranav,Male,47.0,Kolkata,Working Professional,Manager,,2.0,,,1.0,7-8 hours,Unhealthy,BHM,No,1.0,2.0,Yes,0
-1273,Anushka,Female,30.0,Agra,Working Professional,Digital Marketer,,5.0,,,4.0,7-8 hours,Moderate,BA,No,7.0,5.0,Yes,0
+1273,Anushka,Female,30.0,Agra,Working Professional,Digital Marketer,,5.0,,,4.0,7-8 hours,Moderate,BA,No,7.0,5.0,No,0
 557,Rohan,Male,47.0,Kolkata,Working Professional,Content Writer,,4.0,,,5.0,More than 8 hours,Unhealthy,B.Ed,No,9.0,1.0,No,0
 1616,Siddhesh,Male,19.0,Delhi,Student,,4.0,,8.04,3.0,,5-6 hours,Healthy,Class 12,Yes,10.0,5.0,No,1
 1136,Ishaani,Female,45.0,Kanpur,Working Professional,Teacher,,3.0,,,4.0,5-6 hours,Unhealthy,M.Pharm,Yes,0.0,2.0,Yes,0
@@ -55,7 +55,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 1292,Radhika,Female,48.0,Hyderabad,Working Professional,Teacher,,1.0,,,5.0,Less than 5 hours,Unhealthy,B.Arch,Yes,2.0,2.0,Yes,0
 1471,Rishi,Male,57.0,Jaipur,Working Professional,Finanancial Analyst,,4.0,,,1.0,Less than 5 hours,Unhealthy,ME,No,1.0,5.0,No,0
 1881,Siddharth,Male,28.0,Bhopal,Student,,3.0,,8.44,4.0,,7-8 hours,Unhealthy,MBA,No,11.0,4.0,Yes,1
-1187,Asha,Female,20.0,Surat,Student,,5.0,,7.64,1.0,,Less than 5 hours,Unhealthy,Class 12,Yes,10.0,4.0,No,1
+1187,Asha,Female,20.0,Surat,Student,,5.0,,7.64,1.0,,Less than 5 hours,Unhealthy,Class 12,Yes,10.0,4.0,No,0
 76,Aariv,Male,54.0,Delhi,Working Professional,Content Writer,,4.0,,,2.0,7-8 hours,Unhealthy,B.Ed,No,12.0,5.0,Yes,0
 1367,Rashi,Female,28.0,Mumbai,Working Professional,Teacher,,4.0,,,5.0,More than 8 hours,Healthy,BA,No,5.0,4.0,Yes,0
 972,Mihir,Male,31.0,Ahmedabad,Working Professional,Chef,,4.0,,,2.0,5-6 hours,Unhealthy,MHM,Yes,9.0,5.0,Yes,1
@@ -89,7 +89,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 490,Siddhesh,Male,42.0,Patna,Working Professional,Chef,,5.0,,,5.0,Less than 5 hours,Healthy,BHM,No,4.0,1.0,No,0
 1702,Shiv,Male,53.0,Pune,Working Professional,Researcher,,1.0,,,5.0,Less than 5 hours,Healthy,ME,Yes,3.0,3.0,No,0
 1632,Saanvi,Female,31.0,Hyderabad,Student,,1.0,,8.39,5.0,,Less than 5 hours,Unhealthy,MCA,No,10.0,1.0,No,0
-491,Vedant,Male,19.0,Pune,Student,,3.0,,9.05,1.0,,More than 8 hours,Moderate,Class 12,No,1.0,5.0,No,1
+491,Vedant,Male,19.0,Pune,Student,,3.0,,9.05,1.0,,More than 8 hours,Moderate,Class 12,No,1.0,5.0,No,0
 539,Vidhi,Female,24.0,Kolkata,Student,,5.0,,8.96,1.0,,5-6 hours,Moderate,BCA,Yes,12.0,5.0,No,1
 28,Asha,Female,47.0,Kolkata,Working Professional,Entrepreneur,,3.0,,,5.0,7-8 hours,Moderate,BSc,No,5.0,1.0,No,0
 1891,Ritika,Female,23.0,Kalyan,Student,,3.0,,5.67,4.0,,7-8 hours,Unhealthy,MSc,Yes,11.0,1.0,Yes,1
@@ -190,7 +190,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 323,Raghavendra,Male,56.0,Meerut,Working Professional,Mechanical Engineer,,3.0,,,2.0,Less than 5 hours,Moderate,BCA,No,1.0,1.0,No,0
 1716,Atharv,Male,53.0,Nashik,Working Professional,Business Analyst,,3.0,,,3.0,7-8 hours,Unhealthy,ME,Yes,11.0,1.0,Yes,0
 1990,Mithila,Female,52.0,Hyderabad,Working Professional,HR Manager,,1.0,,,5.0,7-8 hours,Healthy,BCA,Yes,11.0,5.0,Yes,1
-1675,Tanya,Female,20.0,Lucknow,Student,,5.0,,7.04,4.0,,7-8 hours,Moderate,Class 12,Yes,12.0,5.0,No,1
+1675,Tanya,Female,20.0,Lucknow,Student,,5.0,,7.04,4.0,,7-8 hours,Moderate,Class 12,Yes,12.0,5.0,No,0
 1199,Darsh,Male,24.0,Kolkata,Working Professional,Teacher,,4.0,,,3.0,5-6 hours,Unhealthy,LLB,Yes,9.0,5.0,Yes,1
 30,Prisha,Female,28.0,Varanasi,Student,,3.0,,5.59,2.0,,7-8 hours,Moderate,BCA,Yes,4.0,5.0,Yes,1
 623,Kiran,Female,23.0,Bangalore,Student,,5.0,,5.66,1.0,,Less than 5 hours,Unhealthy,MCA,Yes,11.0,4.0,No,1
@@ -257,7 +257,7 @@ id,Name,Gender,Age,City,Working Professional or Student,Profession,Academic Pres
 166,Tara,Female,25.0,Ahmedabad,Student,,3.0,,5.57,3.0,,More than 8 hours,Unhealthy,MSc,Yes,10.0,5.0,No,1
 1257,Vikram,Male,23.0,Vasai-Virar,Working Professional,Teacher,,2.0,,,2.0,More than 8 hours,Healthy,B.Com,Yes,8.0,3.0,No,0
 1288,Pooja,Female,45.0,Ghaziabad,Working Professional,Lawyer,,4.0,,,4.0,7-8 hours,Moderate,LLM,No,2.0,3.0,Yes,0
-127637,Vidya,Female,25.0,Delhi,Student,Architect,5.0,,8.98,3.0,,More than 8 hours,Healthy,B.Arch,Yes,5.0,5.0,No,1
+127637,Vidya,Female,25.0,Delhi,Student,Architect,5.0,,8.98,3.0,,More than 8 hours,Healthy,B.Arch,Yes,5.0,5.0,No,0
 297,Anvi,Female,49.0,Kolkata,Working Professional,Consultant,,5.0,,,3.0,5-6 hours,Unhealthy,PhD,No,0.0,4.0,Yes,0
 740,Harsha,Male,32.0,Visakhapatnam,Working Professional,Lawyer,,5.0,,,4.0,5-6 hours,Unhealthy,LLM,Yes,12.0,2.0,No,1
 811,Anaya,Female,28.0,Vasai-Virar,Student,,2.0,,8.95,4.0,,5-6 hours,Healthy,BSc,Yes,2.0,5.0,Yes,1
