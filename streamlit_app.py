@@ -159,7 +159,19 @@ if view_type == "Confusion Matrix":
     )
     st.dataframe(cm_df, use_container_width=True)
 else:
-    st.text(classification_report(y_test, y_pred))
+    report_dict = classification_report(
+        y_test,
+        y_pred,
+        output_dict=True
+    )
+
+    report_df = (
+        pd.DataFrame(report_dict)
+        .transpose()
+        .round(4)
+    )
+
+    st.dataframe(report_df, use_container_width=True)
 
 st.caption(
     "Models are pretrained and loaded from disk. "
