@@ -28,11 +28,14 @@ DEFAULT_TARGET = "Depression"
 @st.cache_resource
 def load_models():
     if not os.path.exists(MODEL_PATH):
-        st.error("Trained model file not found. Please train models offline.")
+        st.error("Trained model file not found. Please train models first.")
         st.stop()
 
     with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
+        models = pickle.load(f)
+
+    return models
+
 
 models = load_models()
 
@@ -43,25 +46,7 @@ st.set_page_config(page_title="ML Assignment 2", layout="wide")
 st.title("Classification App (Pretrained Models)")
 
 # -------------------------------------------------
-# DOWNLOAD SECTION (SHOWN FIRST)
-# -------------------------------------------------
-st.markdown("### Download Test Dataset Template")
-
-if os.path.exists("data/test_data.csv"):
-    with open("data/test_data.csv", "rb") as f:
-        st.download_button(
-            label="Download Test Dataset CSV",
-            data=f,
-            file_name="test_data.csv",
-            mime="text/csv"
-        )
-else:
-    st.info("Test dataset template not found in data/test_data.csv")
-
-st.markdown("---")
-
-# -------------------------------------------------
-# SIDEBAR CONTROLS
+# SIDEBAR
 # -------------------------------------------------
 st.sidebar.header("1. Upload Test Dataset")
 test_file = st.sidebar.file_uploader(
@@ -79,10 +64,10 @@ view_type = st.sidebar.radio(
 )
 
 # -------------------------------------------------
-# STOP IF NO TEST DATA
+# STOP IF NO DATA
 # -------------------------------------------------
 if test_file is None:
-    st.info("Please upload a test CSV file to view predictions and metrics.")
+    st.info("Please upload a test CSV file to continue.")
     st.stop()
 
 # -------------------------------------------------
@@ -90,24 +75,53 @@ if test_file is None:
 # -------------------------------------------------
 df = pd.read_csv(test_file)
 
-if target_col not in df.columns:
-    st.error(f"Target column '{target_col}' not found in dataset")
-    st.stop()
+# -------------------------------------------------
+# DOWNLOAD OPTION (FIRST)
+# -------------------------------------------------
+st.subheader("Download Test Dataset")
 
-X_test = df.drop(columns=[target_col])
-y_test = df[target_col].astype(int)
+csv_bytes = df.to_csv(index=False).encode("utf-8")
+st.download_button(
+    label="Download Uploaded Test CSV",
+    data=csv_bytes,
+    file_name="test_data.csv",
+    mime="text/csv"
+)
+
+st.markdown("---")
+
+# -------------------------------------------------
+# CHECK TARGET COLUMN
+# -------------------------------------------------
+has_target = target_col in df.columns
+
+if has_target:
+    X_test = df.drop(columns=[target_col])
+    y_test = df[target_col].astype(int)
+else:
+    X_test = df.copy()
+    y_test = None
+    st.warning(
+        f"Target column '{target_col}' not found. "
+        "Predictions will be shown without evaluation metrics."
+    )
 
 # -------------------------------------------------
 # DATASET INFO
 # -------------------------------------------------
 st.markdown("### Dataset Information")
 c1, c2, c3 = st.columns(3)
+
 c1.metric("Rows", X_test.shape[0])
 c2.metric("Features", X_test.shape[1])
-c3.metric(
-    "Class Balance (0 / 1)",
-    f"{(y_test == 0).mean():.2f} / {(y_test == 1).mean():.2f}"
-)
+
+if has_target:
+    c3.metric(
+        "Class Balance (0 / 1)",
+        f"{(y_test == 0).mean():.2f} / {(y_test == 1).mean():.2f}"
+    )
+else:
+    c3.metric("Class Balance", "Not Available")
 
 # -------------------------------------------------
 # PREDICTION
@@ -122,56 +136,54 @@ except Exception:
 y_pred = (y_prob >= threshold).astype(int)
 
 # -------------------------------------------------
-# METRICS
+# SHOW PREDICTIONS
 # -------------------------------------------------
-metrics = {
-    "Accuracy": accuracy_score(y_test, y_pred),
-    "Precision": precision_score(y_test, y_pred),
-    "Recall": recall_score(y_test, y_pred),
-    "F1 Score": f1_score(y_test, y_pred),
-    "MCC": matthews_corrcoef(y_test, y_pred),
-}
+st.markdown("### Predictions Preview")
 
-try:
-    metrics["AUC"] = roc_auc_score(y_test, y_prob)
-except Exception:
-    metrics["AUC"] = np.nan
+pred_df = X_test.copy()
+pred_df["Predicted_Label"] = y_pred
+pred_df["Predicted_Probability"] = y_prob
 
-st.markdown("### Evaluation Metrics")
-metrics_df = pd.DataFrame(metrics, index=["Value"]).T
-st.dataframe(metrics_df.style.format("{:.4f}"), use_container_width=True)
+st.dataframe(pred_df.head(20), use_container_width=True)
 
 # -------------------------------------------------
-# DETAILED VIEW
+# METRICS (ONLY IF TARGET EXISTS)
 # -------------------------------------------------
-st.markdown("### Detailed Evaluation")
+if has_target:
+    metrics = {
+        "Accuracy": accuracy_score(y_test, y_pred),
+        "Precision": precision_score(y_test, y_pred),
+        "Recall": recall_score(y_test, y_pred),
+        "F1 Score": f1_score(y_test, y_pred),
+        "MCC": matthews_corrcoef(y_test, y_pred),
+    }
 
-if view_type == "Confusion Matrix":
-    cm = confusion_matrix(y_test, y_pred)
-    cm_df = pd.DataFrame(
-        cm,
-        index=["True 0", "True 1"],
-        columns=["Pred 0", "Pred 1"]
-    )
-    st.dataframe(cm_df, use_container_width=True)
-else:
-    st.text(classification_report(y_test, y_pred))
+    try:
+        metrics["AUC"] = roc_auc_score(y_test, y_prob)
+    except Exception:
+        metrics["AUC"] = np.nan
+
+    st.markdown("### Evaluation Metrics")
+    metrics_df = pd.DataFrame(metrics, index=["Value"]).T
+    st.dataframe(metrics_df.style.format("{:.4f}"), use_container_width=True)
+
+    st.markdown("### Detailed Evaluation")
+
+    if view_type == "Confusion Matrix":
+        cm = confusion_matrix(y_test, y_pred)
+        cm_df = pd.DataFrame(
+            cm,
+            index=["True 0", "True 1"],
+            columns=["Pred 0", "Pred 1"]
+        )
+        st.dataframe(cm_df, use_container_width=True)
+    else:
+        st.text(classification_report(y_test, y_pred))
 
 # -------------------------------------------------
-# DOWNLOAD UPLOADED TEST DATA
+# FOOTER
 # -------------------------------------------------
-st.markdown("---")
-st.subheader("Download Uploaded Test Dataset")
-
-csv_bytes = df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="Download Uploaded Test CSV",
-    data=csv_bytes,
-    file_name="test_data.csv",
-    mime="text/csv"
-)
-
 st.caption(
     "Models are pretrained and loaded from disk. "
-    "No model training is performed inside the Streamlit UI."
+    "No retraining is performed in the Streamlit UI."
 )
