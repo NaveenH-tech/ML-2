@@ -55,13 +55,22 @@ models = load_models()
 st.set_page_config(page_title="ML Assignment 2", layout="wide")
 st.title("Classification App (Pretrained Models)")
 
-st.sidebar.header("1. Upload Test Dataset")
+st.subheader("Download Test Dataset")
+csv_bytes = test_df.to_csv(index=False).encode("utf-8")
+st.download_button(
+    label="Download Test CSV",
+    data=csv_bytes,
+    file_name="data/test_data.csv",
+    mime="text/csv"
+)
+
+st.sidebar.header("Upload Test Dataset")
 test_file = st.sidebar.file_uploader(
     "Upload CSV file (test data only)",
     type=["csv"]
 )
 
-st.sidebar.header("2. Settings")
+st.sidebar.header("Settings")
 target_col = st.sidebar.text_input("Target column", value=DEFAULT_TARGET)
 model_name = st.sidebar.selectbox("Select model", list(models.keys()))
 threshold = st.sidebar.slider("Decision threshold", 0.05, 0.95, 0.50, 0.05)
