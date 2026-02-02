@@ -22,30 +22,17 @@ from sklearn.metrics import (
 MODEL_PATH = "model/trained_models/all_models.pkl"
 DEFAULT_TARGET = "Depression"
 
-if not os.path.exists(MODEL_PATH):
-    from train_models import train_and_save_all_models
-    import pandas as pd
-
-    df = pd.read_csv("data/train_data.csv")
-    X = df.drop(columns=["Depression"])
-    y = df["Depression"].astype(int)
-
-    train_and_save_all_models(X, y, MODEL_PATH)
-
 # -------------------------------------------------
-# LOAD MODELS (SAFE, CACHED)
+# LOAD MODELS (NO TRAINING IN UI)
 # -------------------------------------------------
 @st.cache_resource
 def load_models():
     if not os.path.exists(MODEL_PATH):
-        st.error("Trained model file not found")
+        st.error("Trained model file not found. Please train models offline.")
         st.stop()
 
     with open(MODEL_PATH, "rb") as f:
-        models = pickle.load(f)
-
-    return models
-
+        return pickle.load(f)
 
 models = load_models()
 
@@ -55,6 +42,27 @@ models = load_models()
 st.set_page_config(page_title="ML Assignment 2", layout="wide")
 st.title("Classification App (Pretrained Models)")
 
+# -------------------------------------------------
+# DOWNLOAD SECTION (SHOWN FIRST)
+# -------------------------------------------------
+st.markdown("### Download Test Dataset Template")
+
+if os.path.exists("data/test_data.csv"):
+    with open("data/test_data.csv", "rb") as f:
+        st.download_button(
+            label="Download Test Dataset CSV",
+            data=f,
+            file_name="test_data.csv",
+            mime="text/csv"
+        )
+else:
+    st.info("Test dataset template not found in data/test_data.csv")
+
+st.markdown("---")
+
+# -------------------------------------------------
+# SIDEBAR CONTROLS
+# -------------------------------------------------
 st.sidebar.header("1. Upload Test Dataset")
 test_file = st.sidebar.file_uploader(
     "Upload CSV file (test data only)",
@@ -70,21 +78,11 @@ view_type = st.sidebar.radio(
     ["Confusion Matrix", "Classification Report"]
 )
 
-st.markdown("---")
-st.subheader("Download Test Dataset")
-csv_bytes = test_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="Download Uploaded Test CSV",
-    data=csv_bytes,
-    file_name="test_data.csv",
-    mime="text/csv"
-)
-
 # -------------------------------------------------
-# STOP IF NO DATA
+# STOP IF NO TEST DATA
 # -------------------------------------------------
 if test_file is None:
-    st.info("Please upload a test CSV file to continue")
+    st.info("Please upload a test CSV file to view predictions and metrics.")
     st.stop()
 
 # -------------------------------------------------
@@ -99,6 +97,9 @@ if target_col not in df.columns:
 X_test = df.drop(columns=[target_col])
 y_test = df[target_col].astype(int)
 
+# -------------------------------------------------
+# DATASET INFO
+# -------------------------------------------------
 st.markdown("### Dataset Information")
 c1, c2, c3 = st.columns(3)
 c1.metric("Rows", X_test.shape[0])
@@ -154,14 +155,13 @@ if view_type == "Confusion Matrix":
     )
     st.dataframe(cm_df, use_container_width=True)
 else:
-    report = classification_report(y_test, y_pred)
-    st.text(report)
+    st.text(classification_report(y_test, y_pred))
 
 # -------------------------------------------------
-# DOWNLOAD TEST DATA
+# DOWNLOAD UPLOADED TEST DATA
 # -------------------------------------------------
 st.markdown("---")
-st.subheader("Download Test Dataset")
+st.subheader("Download Uploaded Test Dataset")
 
 csv_bytes = df.to_csv(index=False).encode("utf-8")
 st.download_button(
@@ -171,4 +171,7 @@ st.download_button(
     mime="text/csv"
 )
 
-st.caption("Models are pretrained and loaded from disk. No retraining is performed in the UI.")
+st.caption(
+    "Models are pretrained and loaded from disk. "
+    "No model training is performed inside the Streamlit UI."
+)
