@@ -74,7 +74,7 @@ test_file = st.sidebar.file_uploader(
 )
 
 st.sidebar.header("2. Settings")
-target_col = st.sidebar.text_input("Target column", value=DEFAULT_TARGET)
+target_col = st.sidebar.text_input("Target column", value=DEFAULT_TARGET, disabled=True )
 model_name = st.sidebar.selectbox("Select model", list(models.keys()))
 threshold = st.sidebar.slider("Decision threshold", 0.05, 0.95, 0.50, 0.05)
 view_type = st.sidebar.radio(
